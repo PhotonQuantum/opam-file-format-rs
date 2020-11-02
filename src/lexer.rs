@@ -86,109 +86,103 @@ fn char_from_hex(lex: &mut Lexer<EscapeToken>) -> char {
     char::from_u32(u32::from_str_radix(&lex.slice()[1..], 16).unwrap()).unwrap()
 }
 
-fn parse_escape<'a, T>(lex: &mut Lexer<'a, T>) -> char
-where
-    T: Logos<'a, Source = str>,
+fn parse_escape<'a, T>(lex: &mut Lexer<'a, T>) -> Option<char>
+    where
+        T: Logos<'a, Source=str>,
 {
     let remainder = lex.remainder();
     let mut escape_lexer: Lexer<EscapeToken> = EscapeToken::lexer(remainder);
     let token = escape_lexer.next();
-    match token.expect("illegal escape sequence") {
+    if let None = token{ return None };
+    match token.unwrap() {
         EscapeToken::EOL(str) => {
             lex.bump(str.len());
-            '\n'
+            Some('\n')
         }
         EscapeToken::CHAR(char) => {
             lex.bump(1);
-            char
+            Some(char)
         }
-        EscapeToken::Error => panic!("illegal escape sequence"),
+        EscapeToken::Error => None,
     }
 }
 
-fn parse_relop<'a>(lex: &mut Lexer<'a, Token<'a>>) -> Relop {
+fn parse_relop<'a>(lex: &mut Lexer<'a, Token<'a>>) -> Option<Relop> {
     match lex.slice() {
-        "=" => Relop::Eq,
-        "!=" => Relop::Neq,
-        ">=" => Relop::Geq,
-        ">" => Relop::Gt,
-        "<=" => Relop::Leq,
-        "<" => Relop::Lt,
-        "~" => Relop::Geq,
-        x => panic!("{} is not a valid comparison operator", x),
+        "=" => Some(Relop::Eq),
+        "!=" => Some(Relop::Neq),
+        ">=" => Some(Relop::Geq),
+        ">" => Some(Relop::Gt),
+        "<=" => Some(Relop::Leq),
+        "<" => Some(Relop::Lt),
+        "~" => Some(Relop::Geq),
+        _ => None,
     }
 }
 
-fn parse_pfxop<'a>(lex: &mut Lexer<'a, Token<'a>>) -> Pfxop {
+fn parse_pfxop<'a>(lex: &mut Lexer<'a, Token<'a>>) -> Option<Pfxop> {
     match lex.slice() {
-        "!" => Pfxop::Not,
-        "?" => Pfxop::Defined,
-        x => panic!("{} is not a valid prefix operator", x),
+        "!" => Some(Pfxop::Not),
+        "?" => Some(Pfxop::Defined),
+        _ => None
     }
 }
 
-fn parse_envop<'a>(lex: &mut Lexer<'a, Token<'a>>) -> Envop {
+fn parse_envop<'a>(lex: &mut Lexer<'a, Token<'a>>) -> Option<Envop> {
     match lex.slice() {
-        "=" => Envop::Eq,
-        "+=" => Envop::PlusEq,
-        "=+" => Envop::EqPlus,
-        "=+=" => Envop::EqPlusEq,
-        ":=" => Envop::ColonEq,
-        "=:" => Envop::EqColon,
-        x => panic!("{} is not a valid environment update operator", x),
+        "=" => Some(Envop::Eq),
+        "+=" => Some(Envop::PlusEq),
+        "=+" => Some(Envop::EqPlus),
+        "=+=" => Some(Envop::EqPlusEq),
+        ":=" => Some(Envop::ColonEq),
+        "=:" => Some(Envop::EqColon),
+        _ => None,
     }
 }
 
-fn parse_string(lex: &mut Lexer<Token>) -> String {
-    let remainder = lex.remainder();
-    let mut string_lexer: Lexer<StringToken> = StringToken::lexer(remainder);
-    let mut result = String::new();
-    loop {
-        let token = string_lexer.next();
-        match token.expect("unterminated string") {
-            StringToken::EOS => break,
-            StringToken::CHAR(char) => result.push(char),
-            StringToken::Error => panic!("error when parsing string"),
-        };
-    }
-    lex.bump(string_lexer.span().end);
-    String::from(result)
+macro_rules! fn_parse_string {
+    ($func_name:ident, $token_type: ident) => {
+        fn $func_name<'a>(lex: &mut Lexer<'a, Token<'a>>) -> Option<String> {
+            let remainder = lex.remainder();
+            let mut string_lexer: Lexer<$token_type> = $token_type::lexer(remainder);
+            let mut result = String::new();
+            loop {
+                let token = string_lexer.next();
+                if let None = token { return None };
+                match token.unwrap() {
+                    $token_type::EOS => break,
+                    $token_type::CHAR(char) => result.push(char),
+                    $token_type::Error => {return None},
+                };
+            }
+            lex.bump(string_lexer.span().end);
+            Some(String::from(result))
+        }
+    };
 }
 
-fn parse_string_triple<'a>(lex: &mut Lexer<'a, Token<'a>>) -> String {
-    let remainder = lex.remainder();
-    let mut string_lexer: Lexer<StringTripleToken> = StringTripleToken::lexer(remainder);
-    let mut result = String::new();
-    loop {
-        let token = string_lexer.next();
-        match token.expect("unterminated string") {
-            StringTripleToken::EOS => break,
-            StringTripleToken::CHAR(char) => result.push(char),
-            StringTripleToken::Error => panic!("error when parsing string"),
-        };
-    }
-    lex.bump(string_lexer.span().end);
-    String::from(result)
-}
+fn_parse_string!(parse_string, StringToken);
+fn_parse_string!(parse_string_triple, StringTripleToken);
 
-fn parse_comment<'a>(lex: &mut Lexer<'a, Token<'a>>) {
+fn parse_comment<'a>(lex: &mut Lexer<'a, Token<'a>>) -> bool {
     let remainder = lex.remainder();
     let mut comment_lex: Lexer<CommentToken> = CommentToken::lexer(remainder);
     let mut counter = 1;
     loop {
         let token = comment_lex.next();
-        match token.expect("unterminated comment") {
+        if let None = token {break false}
+        match token.unwrap() {
             CommentToken::LPAR => counter += 1,
             CommentToken::RPAR => {
                 if counter > 1 {
                     counter -= 1;
                 } else {
                     lex.bump(comment_lex.span().end);
-                    break;
+                    break true
                 }
             }
             CommentToken::SKIP => (),
-            CommentToken::Error => panic!("error when parsing comment"),
+            CommentToken::Error => break false,
         }
     }
 }
