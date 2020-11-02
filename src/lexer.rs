@@ -16,29 +16,24 @@ enum EscapeToken {
     Error,
 }
 
-#[derive(Logos, Debug, PartialEq)]
-enum StringToken {
-    #[token("\"")]
-    EOS,
-    #[token("\\", parse_escape)]
-    #[regex(r"\r?\n", | _ | '\n')]
-    #[regex(r"[\s\S]", | lex | lex.slice().parse())]
-    CHAR(char),
-    #[error]
-    Error,
+macro_rules! enum_string_token {
+    ($enum_name:ident, $eos_token:expr) => {
+        #[derive(Logos, Debug, PartialEq)]
+        enum $enum_name {
+            #[token($eos_token)]
+            EOS,
+            #[token("\\", parse_escape)]
+            #[regex(r"\r?\n", | _ | '\n')]
+            #[regex(r"[\s\S]", | lex | lex.slice().parse())]
+            CHAR(char),
+            #[error]
+            Error,
+        }
+    };
 }
 
-#[derive(Logos, Debug, PartialEq)]
-enum StringTripleToken {
-    #[token("\"\"\"")]
-    EOS,
-    #[token("\\", parse_escape)]
-    #[regex(r"\r?\n", | _ | '\n')]
-    #[regex(r"[\s\S]", | lex | lex.slice().parse())]
-    CHAR(char),
-    #[error]
-    Error,
-}
+enum_string_token!(StringToken, "\"");
+enum_string_token!(StringTripleToken, "\"\"\"");
 
 #[derive(Logos, Debug, PartialEq)]
 enum CommentToken {
@@ -78,35 +73,6 @@ pub enum Envop {
     EqColon,
 }
 
-fn char_from_dec(lex: &mut Lexer<EscapeToken>) -> char {
-    char::from_u32(lex.slice().to_string().parse::<u32>().unwrap()).unwrap()
-}
-
-fn char_from_hex(lex: &mut Lexer<EscapeToken>) -> char {
-    char::from_u32(u32::from_str_radix(&lex.slice()[1..], 16).unwrap()).unwrap()
-}
-
-fn parse_escape<'a, T>(lex: &mut Lexer<'a, T>) -> Option<char>
-    where
-        T: Logos<'a, Source=str>,
-{
-    let remainder = lex.remainder();
-    let mut escape_lexer: Lexer<EscapeToken> = EscapeToken::lexer(remainder);
-    let token = escape_lexer.next();
-    if let None = token{ return None };
-    match token.unwrap() {
-        EscapeToken::EOL(len) => {
-            lex.bump(len);
-            Some('\n')
-        }
-        EscapeToken::CHAR(char) => {
-            lex.bump(1);
-            Some(char)
-        }
-        EscapeToken::Error => None,
-    }
-}
-
 fn parse_relop<'a>(lex: &mut Lexer<'a, Token<'a>>) -> Option<Relop> {
     match lex.slice() {
         "=" => Some(Relop::Eq),
@@ -124,7 +90,7 @@ fn parse_pfxop<'a>(lex: &mut Lexer<'a, Token<'a>>) -> Option<Pfxop> {
     match lex.slice() {
         "!" => Some(Pfxop::Not),
         "?" => Some(Pfxop::Defined),
-        _ => None
+        _ => None,
     }
 }
 
@@ -140,6 +106,37 @@ fn parse_envop<'a>(lex: &mut Lexer<'a, Token<'a>>) -> Option<Envop> {
     }
 }
 
+fn char_from_dec(lex: &mut Lexer<EscapeToken>) -> char {
+    char::from_u32(lex.slice().to_string().parse::<u32>().unwrap()).unwrap()
+}
+
+fn char_from_hex(lex: &mut Lexer<EscapeToken>) -> char {
+    char::from_u32(u32::from_str_radix(&lex.slice()[1..], 16).unwrap()).unwrap()
+}
+
+fn parse_escape<'a, T>(lex: &mut Lexer<'a, T>) -> Option<char>
+where
+    T: Logos<'a, Source = str>,
+{
+    let remainder = lex.remainder();
+    let mut escape_lexer: Lexer<EscapeToken> = EscapeToken::lexer(remainder);
+    let token = escape_lexer.next();
+    if let None = token {
+        return None;
+    };
+    match token.unwrap() {
+        EscapeToken::EOL(len) => {
+            lex.bump(len);
+            Some('\n')
+        }
+        EscapeToken::CHAR(char) => {
+            lex.bump(1);
+            Some(char)
+        }
+        EscapeToken::Error => None,
+    }
+}
+
 macro_rules! fn_parse_string {
     ($func_name:ident, $token_type: ident) => {
         fn $func_name<'a>(lex: &mut Lexer<'a, Token<'a>>) -> Option<String> {
@@ -148,11 +145,13 @@ macro_rules! fn_parse_string {
             let mut result = String::new();
             loop {
                 let token = string_lexer.next();
-                if let None = token { return None };
+                if let None = token {
+                    return None;
+                };
                 match token.unwrap() {
                     $token_type::EOS => break,
                     $token_type::CHAR(char) => result.push(char),
-                    $token_type::Error => {return None},
+                    $token_type::Error => return None,
                 };
             }
             lex.bump(string_lexer.span().end);
@@ -170,7 +169,9 @@ fn parse_comment<'a>(lex: &mut Lexer<'a, Token<'a>>) -> bool {
     let mut counter = 1;
     loop {
         let token = comment_lex.next();
-        if let None = token {break false}
+        if let None = token {
+            break false;
+        }
         match token.unwrap() {
             CommentToken::LPAR => counter += 1,
             CommentToken::RPAR => {
@@ -178,7 +179,7 @@ fn parse_comment<'a>(lex: &mut Lexer<'a, Token<'a>>) -> bool {
                     counter -= 1;
                 } else {
                     lex.bump(comment_lex.span().end);
-                    break true
+                    break true;
                 }
             }
             CommentToken::SKIP => (),
