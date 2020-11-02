@@ -6,8 +6,8 @@ use regex::Regex;
 
 #[derive(Logos, Debug, PartialEq)]
 enum EscapeToken {
-    #[regex(r"(\r?\n) *", | lex | lex.slice().parse())]
-    EOL(String),
+    #[regex(r"(\r?\n) *", | lex | lex.slice().len())]
+    EOL(usize),
     #[regex(r#"["'\\n\r\t ]"#, | lex | lex.slice().parse())]
     #[regex(r"\d\d\d", char_from_dec)]
     #[regex(r"x[0-9a-fA-F][0-9a-fA-F]", char_from_hex)]
@@ -95,8 +95,8 @@ fn parse_escape<'a, T>(lex: &mut Lexer<'a, T>) -> Option<char>
     let token = escape_lexer.next();
     if let None = token{ return None };
     match token.unwrap() {
-        EscapeToken::EOL(str) => {
-            lex.bump(str.len());
+        EscapeToken::EOL(len) => {
+            lex.bump(len);
             Some('\n')
         }
         EscapeToken::CHAR(char) => {
