@@ -6,6 +6,7 @@ use std::fs::File;
 use std::io::Read;
 
 use colored::*;
+use std::process::exit;
 
 mod lexer;
 mod parser;
@@ -20,7 +21,7 @@ fn main() {
     let tokens = lexer::lex(&buffer);
     if let Err(span) = tokens {
         pretty_error(&filename, &buffer, &span, "unexpected character");
-        return;
+        exit(1);
     }
     let output = parser::parse(tokens.unwrap().into_iter());
     match output {
@@ -28,8 +29,9 @@ fn main() {
             if let Some((token, span)) = E {
                 pretty_error(&filename, &buffer, &span, msg);
             } else {
-                println!("ERR");
+                eprintln!("ERR");
             }
+            exit(1);
         }
         Ok(file) => println!("{:#?}", file),
     }
@@ -40,8 +42,8 @@ fn pretty_error(filename: &str, source: &str, span: &lexer::Span, message: &str)
     let lexer::Span { start, end } = span.clone();
     let (start_ln, end_ln) = get_line_range(source, start, end);
     let pad = (&end_ln.line).to_string().chars().count();
-    println!("{}", format!("{}: {}", "error".red(), message).bold());
-    println!(
+    eprintln!("{}", format!("{}: {}", "error".red(), message).bold());
+    eprintln!(
         "{}{} {}:{}:{}",
         repeat_str(" ", pad),
         "-->".blue().bold(),
@@ -52,23 +54,23 @@ fn pretty_error(filename: &str, source: &str, span: &lexer::Span, message: &str)
     let prefix = format!("{} |", start_ln.line).blue().bold();
     let prefix_wo_ln = format!("{} |", repeat_str(" ", pad)).blue().bold();
     if start_ln.line != 0 {
-        println!("{} {}", prefix_wo_ln, split_source[start_ln.line - 1]);
+        eprintln!("{} {}", prefix_wo_ln, split_source[start_ln.line - 1]);
     }
-    println!("{} {}", prefix, split_source[start_ln.line]);
+    eprintln!("{} {}", prefix, split_source[start_ln.line]);
     let line_length = split_source[start_ln.line].chars().count();
     let mark_len = if line_length - start_ln.col < span.end - span.start {
         line_length - start_ln.col
     } else {
         span.end - span.start
     };
-    println!(
+    eprintln!(
         "{} {}{}",
         prefix_wo_ln,
         repeat_str(" ", start_ln.col),
         repeat_str("^", mark_len).red().bold()
     );
     if end_ln.line < split_source.len() {
-        println!("{} {}", prefix_wo_ln, split_source[start_ln.line + 1]);
+        eprintln!("{} {}", prefix_wo_ln, split_source[start_ln.line + 1]);
     }
 }
 
@@ -96,7 +98,7 @@ fn get_line_range(source: &str, start: usize, end: usize) -> (Pos, Pos) {
             }
         }
         if let None = end_ln {
-            if end > current_pos && end <= current_pos + line_length {
+            if end >= current_pos && end <= current_pos + line_length {
                 end_ln = Some(Pos {
                     line: i,
                     col: end - current_pos,
