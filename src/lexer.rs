@@ -236,7 +236,7 @@ pub enum Token {
     #[token("\"\"\"", parse_string_triple)]
     STRING(String),
     #[token("(*", parse_comment)]
-    #[regex(r"# [^\n]*")]
+    #[regex(r"#[^\n]*")]
     COMMENT,
     #[token("true", | lex | lex.slice().parse())]
     #[token("false", | lex | lex.slice().parse())]
@@ -275,6 +275,7 @@ pub fn lex(input: &str) -> Result<Vec<(Token, Span)>, Span> {
         };
         match token {
             Token::Error => return Err(span),
+            Token::COMMENT => (),
             _ => result.push((token, span)),
         }
     }
