@@ -76,7 +76,7 @@ pub enum Envop {
 #[derive(Debug, PartialEq)]
 pub enum Logop {
     And,
-    Or
+    Or,
 }
 
 fn parse_relop(lex: &mut Lexer<Token>) -> Option<Relop> {
@@ -260,12 +260,23 @@ pub enum Token {
 }
 
 #[derive(Debug, Clone, Copy)]
-pub struct Span{
+pub struct Span {
     pub start: usize,
-    pub end: usize
+    pub end: usize,
 }
 
-pub fn lex(input: &str) -> Vec<(Token, Span)> {
+pub fn lex(input: &str) -> Result<Vec<(Token, Span)>, Span> {
     let lexer: Lexer<Token> = Token::lexer(input);
-    lexer.spanned().map(|(token, span)|(token, Span{start:span.start, end:span.end})).collect()
+    let mut result: Vec<(Token, Span)> = vec![];
+    for (token, span) in lexer.spanned() {
+        let span = Span {
+            start: span.start,
+            end: span.end,
+        };
+        match token {
+            Token::Error => return Err(span),
+            _ => result.push((token, span)),
+        }
+    }
+    Ok(result)
 }
