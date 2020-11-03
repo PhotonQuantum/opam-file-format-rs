@@ -73,7 +73,13 @@ pub enum Envop {
     EqColon,
 }
 
-fn parse_relop<'a>(lex: &mut Lexer<'a, Token<'a>>) -> Option<Relop> {
+#[derive(Debug, PartialEq)]
+pub enum Logop {
+    And,
+    Or
+}
+
+fn parse_relop(lex: &mut Lexer<Token>) -> Option<Relop> {
     match lex.slice() {
         "=" => Some(Relop::Eq),
         "!=" => Some(Relop::Neq),
@@ -86,7 +92,7 @@ fn parse_relop<'a>(lex: &mut Lexer<'a, Token<'a>>) -> Option<Relop> {
     }
 }
 
-fn parse_pfxop<'a>(lex: &mut Lexer<'a, Token<'a>>) -> Option<Pfxop> {
+fn parse_pfxop(lex: &mut Lexer<Token>) -> Option<Pfxop> {
     match lex.slice() {
         "!" => Some(Pfxop::Not),
         "?" => Some(Pfxop::Defined),
@@ -94,7 +100,7 @@ fn parse_pfxop<'a>(lex: &mut Lexer<'a, Token<'a>>) -> Option<Pfxop> {
     }
 }
 
-fn parse_envop<'a>(lex: &mut Lexer<'a, Token<'a>>) -> Option<Envop> {
+fn parse_envop(lex: &mut Lexer<Token>) -> Option<Envop> {
     match lex.slice() {
         "=" => Some(Envop::Eq),
         "+=" => Some(Envop::PlusEq),
@@ -102,6 +108,14 @@ fn parse_envop<'a>(lex: &mut Lexer<'a, Token<'a>>) -> Option<Envop> {
         "=+=" => Some(Envop::EqPlusEq),
         ":=" => Some(Envop::ColonEq),
         "=:" => Some(Envop::EqColon),
+        _ => None,
+    }
+}
+
+fn parse_logop(lex: &mut Lexer<Token>) -> Option<Logop> {
+    match lex.slice() {
+        "&" => Some(Logop::And),
+        "|" => Some(Logop::Or),
         _ => None,
     }
 }
@@ -139,7 +153,7 @@ where
 
 macro_rules! fn_parse_string {
     ($func_name:ident, $token_type: ident) => {
-        fn $func_name<'a>(lex: &mut Lexer<'a, Token<'a>>) -> Option<String> {
+        fn $func_name(lex: &mut Lexer<Token>) -> Option<String> {
             let remainder = lex.remainder();
             let mut string_lexer: Lexer<$token_type> = $token_type::lexer(remainder);
             let mut result = String::new();
@@ -163,7 +177,7 @@ macro_rules! fn_parse_string {
 fn_parse_string!(parse_string, StringToken);
 fn_parse_string!(parse_string_triple, StringTripleToken);
 
-fn parse_comment<'a>(lex: &mut Lexer<'a, Token<'a>>) -> bool {
+fn parse_comment(lex: &mut Lexer<Token>) -> bool {
     let remainder = lex.remainder();
     let mut comment_lex: Lexer<CommentToken> = CommentToken::lexer(remainder);
     let mut counter = 1;
@@ -188,7 +202,7 @@ fn parse_comment<'a>(lex: &mut Lexer<'a, Token<'a>>) -> bool {
     }
 }
 
-fn fix_ident_suffix<'a>(lex: &mut Lexer<'a, Token<'a>>) -> &'a str {
+fn fix_ident_suffix(lex: &mut Lexer<Token>) -> String {
     lazy_static! {
         static ref RE: Regex =
             Regex::new(r":([a-zA-Z]|\d|[_-])*[a-zA-Z]([a-zA-Z]|\d|[_-])*").unwrap();
@@ -199,11 +213,11 @@ fn fix_ident_suffix<'a>(lex: &mut Lexer<'a, Token<'a>>) -> &'a str {
             lex.bump(pos.end());
         }
     };
-    lex.slice()
+    String::from(lex.slice())
 }
 
 #[derive(Logos, Debug, PartialEq)]
-pub enum Token<'a> {
+pub enum Token {
     #[token(":")]
     COLON,
     #[token("{")]
@@ -230,13 +244,11 @@ pub enum Token<'a> {
     #[regex(r"-?[0-9_]+", | lex | lex.slice().parse(), priority = 2)]
     INT(i64),
     #[regex(r"(([a-zA-Z]|\d|[_-])*[a-zA-Z]([a-zA-Z]|\d|[_-])*|_)(\+(([a-zA-Z]|\d|[_-])*[a-zA-Z]([a-zA-Z]|\d|[_-])*|_))*", fix_ident_suffix)]
-    IDENT(&'a str),
+    IDENT(String),
     #[regex(r"(!?=|[<>]=?|~)", parse_relop)]
     RELOP(Relop),
-    #[token("&")]
-    AND,
-    #[token("|")]
-    OR,
+    #[regex(r"&|\|", parse_logop)]
+    LOGOP(Logop),
     #[regex(r"!|\?", parse_pfxop)]
     PFXOP(Pfxop),
     #[regex(r"[\+?]=|=[\+?]=?", parse_envop)]
@@ -247,7 +259,13 @@ pub enum Token<'a> {
     Error,
 }
 
-pub fn lex(input: &str) -> Vec<Token> {
+#[derive(Debug, Clone, Copy)]
+pub struct Span{
+    pub start: usize,
+    pub end: usize
+}
+
+pub fn lex(input: &str) -> Vec<(Token, Span)> {
     let lexer: Lexer<Token> = Token::lexer(input);
-    lexer.spanned().map(|(token, _)| token).collect()
+    lexer.spanned().map(|(token, span)|(token, Span{start:span.start, end:span.end})).collect()
 }
