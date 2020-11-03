@@ -1,7 +1,6 @@
-use plex::parser;
-use std::ops::Range;
 use crate::lexer;
 use crate::lexer::Token::*;
+use plex::parser;
 use std::fs::File;
 
 #[derive(Debug)]
@@ -22,16 +21,20 @@ pub enum Value {
     List(Vec<Box<Value>>),
     Group(Vec<Box<Value>>),
     Option(Box<Value>, Vec<Box<Value>>),
-    EnvBinding(Box<Value>, lexer::Envop, Box<Value>)
+    EnvBinding(Box<Value>, lexer::Envop, Box<Value>),
 }
 
 #[derive(Debug)]
 pub enum Item {
-    Section{kind: String, name: Option<String>, items: Vec<Box<Item>>},
-    Variable(String, Value)
+    Section {
+        kind: String,
+        name: Option<String>,
+        items: Vec<Box<Item>>,
+    },
+    Variable(String, Value),
 }
 
-parser!{
+parser! {
     fn parse_(lexer::Token, lexer::Span);
 
     (a, b){
@@ -118,7 +121,8 @@ parser!{
         }
     }
 }
-pub fn parse<I: Iterator<Item = (lexer::Token, lexer::Span)>>( i: I )
-                                                      -> Result<OpamFile, (Option<(lexer::Token, lexer::Span)>, &'static str)> {
+pub fn parse<I: Iterator<Item = (lexer::Token, lexer::Span)>>(
+    i: I,
+) -> Result<OpamFile, (Option<(lexer::Token, lexer::Span)>, &'static str)> {
     parse_(i)
 }
