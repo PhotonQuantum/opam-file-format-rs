@@ -2,13 +2,18 @@
 
 > WIP
 >
-> This is only a demo, and there are known issues in lexer.
+> This is a demo, and only a bin crate is provided now.
 
 Parser for the opam file syntax written in rust.
 
 ## Get Started (Demo)
 
 ``` shell script
+$ opam-file-format-rs --benchmark ./opam-files
+reading files into memory...
+parsing files...
+parsed 15955 files. elapsed 0.32 secs. speed: 49549.69 files/sec
+
 $ opam-file-format-rs ./opam
 OpamFile {
     items: [
