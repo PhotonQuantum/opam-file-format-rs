@@ -209,49 +209,147 @@ macro_rules! generate_regex {
             #[regex($regex)]
             MATCH,
             #[error]
-            MISS
+            MISS,
         }
-        fn $fn_name(input: &str) -> Option<usize>{
+        fn $fn_name(input: &str) -> Option<usize> {
             let mut lexer: Lexer<$token> = $token::lexer(input);
             let token = lexer.next()?;
             match token {
                 $token::MATCH => Some(lexer.span().end),
-                $token::MISS => None
+                $token::MISS => None,
             }
         }
-    }
+    };
 }
 
 generate_regex!(ReColonToken, re_colon, r":");
+generate_regex!(ReLodashToken, re_lodash, r"_");
+generate_regex!(RePlusToken, re_plus, r"\+");
 generate_regex!(ReAlphaToken, re_alpha, r"[a-zA-Z]*");
 generate_regex!(ReIdExAlphaToken, re_id_ex_alpha, r"[\d_-]*");
 
-fn fix_ident_suffix(lex: &mut Lexer<Token>) -> String {
-    let remainder = lex.remainder();
-    let mut remaining_pos = 0;
-
-    if let Some(pos) = re_colon(&remainder[remaining_pos ..]) {
-        remaining_pos += pos;
-    } else {
-        return String::from(lex.slice());
-    };
-
+fn parse_id(input: &str) -> Option<usize> {
     let mut contains_alpha = false;
+    let mut remaining_pos = 0;
     loop {
-        if let Some(pos) = re_alpha(&remainder[remaining_pos ..]) {
+        let mut matched = false;
+        if let Some(pos) = re_alpha(&input[remaining_pos..]) {
             remaining_pos += pos;
             contains_alpha = true;
-        } else {break;};
-        if let Some(pos) = re_id_ex_alpha(&remainder[remaining_pos ..]) {
+            matched = true;
+        }
+        if let Some(pos) = re_id_ex_alpha(&input[remaining_pos..]) {
             remaining_pos += pos;
-        } else {break;};
+            matched = true;
+        }
+        if !matched {
+            break;
+        }
     }
     if contains_alpha {
-        lex.bump(remaining_pos);
+        Some(remaining_pos)
     } else {
-        return String::from(lex.slice())
+        None
     }
-    String::from(lex.slice())
+}
+
+fn parse_id_lodash(input: &str) -> Option<usize> {
+    if let Some(pos) = parse_id(input) {
+        Some(pos)
+    } else if let Some(pos) = re_lodash(input) {
+        Some(pos)
+    } else {
+        None
+    }
+}
+
+fn match_ident(lex: &mut Lexer<Token>) -> Option<String> {
+    // group1: (id|_)
+    if let Some(pos) = parse_id(lex.remainder()) {
+        lex.bump(pos);
+    } else {
+        return None;
+    }
+
+    // group2: (+ (id|_))*
+    let remainder = lex.remainder();
+    let mut remaining_pos = 0;
+    let mut is_final = true;
+    loop {
+        if let Some(pos) = re_plus(&remainder[remaining_pos..]) {
+            remaining_pos += pos;
+            is_final = false;
+        } else {
+            break;
+        };
+        if let Some(pos) = parse_id_lodash(&remainder[remaining_pos..]) {
+            remaining_pos += pos;
+            is_final = true;
+        } else {
+            break;
+        }
+    }
+
+    if is_final {
+        lex.bump(remaining_pos);
+    }
+
+    let mut remaining_pos = 0;
+    let remainder = lex.remainder();
+    // :
+    if let Some(pos) = re_colon(&remainder[remaining_pos..]) {
+        remaining_pos += pos;
+    } else {
+        return Some(String::from(lex.slice()));
+    };
+
+    // id
+    if let Some(pos) = parse_id(&remainder[remaining_pos..]) {
+        remaining_pos += pos;
+    } else {
+        return Some(String::from(lex.slice()));
+    }
+    lex.bump(remaining_pos);
+    Some(String::from(lex.slice()))
+}
+
+fn match_ident_suffix(lex: &mut Lexer<Token>) -> Option<String> {
+    // group2: (+ (id|_))*
+    let remainder = lex.remainder();
+    let mut remaining_pos = 0;
+    let mut is_final = true;
+    loop {
+        if let Some(pos) = re_plus(&remainder[remaining_pos..]) {
+            remaining_pos += pos;
+            is_final = false;
+        } else {
+            break;
+        };
+        if let Some(pos) = parse_id_lodash(&remainder[remaining_pos..]) {
+            remaining_pos += pos;
+            is_final = true;
+        } else {
+            break;
+        }
+    }
+
+    let mut remaining_pos = 0;
+    let remainder = lex.remainder();
+    // :
+    if let Some(pos) = re_colon(&remainder[remaining_pos..]) {
+        remaining_pos += pos;
+    } else {
+        return Some(String::from(lex.slice()));
+    };
+
+    // id
+    if let Some(pos) = parse_id(&remainder[remaining_pos..]) {
+        remaining_pos += pos;
+    } else {
+        return Some(String::from(lex.slice()));
+    }
+    lex.bump(remaining_pos);
+    Some(String::from(lex.slice()))
 }
 
 #[derive(Logos, Debug, PartialEq)]
@@ -281,7 +379,9 @@ pub enum Token {
     BOOL(bool),
     #[regex(r"-?[0-9_]+", | lex | lex.slice().parse(), priority = 2)]
     INT(i64),
-    #[regex(r"(([a-zA-Z]|\d|[_-])*[a-zA-Z]([a-zA-Z]|\d|[_-])*|_)(\+(([a-zA-Z]|\d|[_-])*[a-zA-Z]([a-zA-Z]|\d|[_-])*|_))*", fix_ident_suffix)]
+    // Some dirty hacks to work around logos bug
+    #[regex(r"[\s\S]", match_ident, priority = 0)]
+    #[token("_", match_ident_suffix, priority = 3)]
     IDENT(String),
     #[regex(r"(!?=|[<>]=?|~)", parse_relop)]
     RELOP(Relop),
