@@ -1,7 +1,6 @@
 use crate::lexer;
 use crate::lexer::Token::*;
 use plex::parser;
-use std::fs::File;
 
 #[derive(Debug)]
 pub struct OpamFile {
