@@ -202,17 +202,55 @@ fn parse_comment(lex: &mut Lexer<Token>) -> bool {
     }
 }
 
-fn fix_ident_suffix(lex: &mut Lexer<Token>) -> String {
-    lazy_static! {
-        static ref RE: Regex =
-            Regex::new(r":([a-zA-Z]|\d|[_-])*[a-zA-Z]([a-zA-Z]|\d|[_-])*").unwrap();
-    }
-    let remainder = lex.remainder();
-    if let Some(pos) = RE.find(remainder) {
-        if pos.start() == 0 {
-            lex.bump(pos.end());
+macro_rules! generate_regex {
+    ($token: ident, $fn_name: ident, $regex: expr) => {
+        #[derive(Logos, Debug, PartialEq)]
+        enum $token {
+            #[regex($regex)]
+            MATCH,
+            #[error]
+            MISS
         }
+        fn $fn_name(input: &str) -> Option<usize>{
+            let mut lexer: Lexer<$token> = $token::lexer(input);
+            let token = lexer.next()?;
+            match token {
+                $token::MATCH => Some(lexer.span().end),
+                $token::MISS => None
+            }
+        }
+    }
+}
+
+generate_regex!(ReColonToken, re_colon, r":");
+generate_regex!(ReAlphaToken, re_alpha, r"[a-zA-Z]*");
+generate_regex!(ReIdExAlphaToken, re_id_ex_alpha, r"[\d_-]*");
+
+fn fix_ident_suffix(lex: &mut Lexer<Token>) -> String {
+    let remainder = lex.remainder();
+    let mut remaining_pos = 0;
+
+    if let Some(pos) = re_colon(&remainder[remaining_pos ..]) {
+        remaining_pos += pos;
+    } else {
+        return String::from(lex.slice());
     };
+
+    let mut contains_alpha = false;
+    loop {
+        if let Some(pos) = re_alpha(&remainder[remaining_pos ..]) {
+            remaining_pos += pos;
+            contains_alpha = true;
+        } else {break;};
+        if let Some(pos) = re_id_ex_alpha(&remainder[remaining_pos ..]) {
+            remaining_pos += pos;
+        } else {break;};
+    }
+    if contains_alpha {
+        lex.bump(remaining_pos);
+    } else {
+        return String::from(lex.slice())
+    }
     String::from(lex.slice())
 }
 
