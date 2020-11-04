@@ -1,8 +1,7 @@
 use std::{char, u32};
 
-use lazy_static::lazy_static;
 use logos::{Lexer, Logos};
-use regex::Regex;
+use partial_application::partial;
 
 #[derive(Logos, Debug, PartialEq)]
 enum EscapeToken {
@@ -263,12 +262,14 @@ fn parse_id_lodash(input: &str) -> Option<usize> {
     }
 }
 
-fn match_ident(lex: &mut Lexer<Token>) -> Option<String> {
+fn match_ident(lodash: bool, lex: &mut Lexer<Token>) -> Option<String> {
     // group1: (id|_)
-    if let Some(pos) = parse_id(lex.remainder()) {
-        lex.bump(pos);
-    } else {
-        return None;
+    if !lodash {
+        if let Some(pos) = parse_id(lex.remainder()) {
+            lex.bump(pos);
+        } else {
+            return None;
+        }
     }
 
     // group2: (+ (id|_))*
@@ -292,45 +293,6 @@ fn match_ident(lex: &mut Lexer<Token>) -> Option<String> {
 
     if is_final {
         lex.bump(remaining_pos);
-    }
-
-    let mut remaining_pos = 0;
-    let remainder = lex.remainder();
-    // :
-    if let Some(pos) = re_colon(&remainder[remaining_pos..]) {
-        remaining_pos += pos;
-    } else {
-        return Some(String::from(lex.slice()));
-    };
-
-    // id
-    if let Some(pos) = parse_id(&remainder[remaining_pos..]) {
-        remaining_pos += pos;
-    } else {
-        return Some(String::from(lex.slice()));
-    }
-    lex.bump(remaining_pos);
-    Some(String::from(lex.slice()))
-}
-
-fn match_ident_suffix(lex: &mut Lexer<Token>) -> Option<String> {
-    // group2: (+ (id|_))*
-    let remainder = lex.remainder();
-    let mut remaining_pos = 0;
-    let mut is_final = true;
-    loop {
-        if let Some(pos) = re_plus(&remainder[remaining_pos..]) {
-            remaining_pos += pos;
-            is_final = false;
-        } else {
-            break;
-        };
-        if let Some(pos) = parse_id_lodash(&remainder[remaining_pos..]) {
-            remaining_pos += pos;
-            is_final = true;
-        } else {
-            break;
-        }
     }
 
     let mut remaining_pos = 0;
@@ -380,8 +342,8 @@ pub enum Token {
     #[regex(r"-?[0-9_]+", | lex | lex.slice().parse(), priority = 2)]
     INT(i64),
     // Some dirty hacks to work around logos bug
-    #[regex(r"[\s\S]", match_ident, priority = 0)]
-    #[token("_", match_ident_suffix, priority = 3)]
+    #[regex(r"[\s\S]", partial!(match_ident => false, _), priority = 0)]
+    #[token("_", partial!(match_ident=> true, _), priority = 3)]
     IDENT(String),
     #[regex(r"(!?=|[<>]=?|~)", parse_relop)]
     RELOP(Relop),
