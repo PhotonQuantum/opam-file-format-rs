@@ -1,10 +1,11 @@
 use crate::lexer;
 use crate::lexer::Token::*;
 use plex::parser;
+use indexmap::{indexmap, IndexMap};
 
 #[derive(Debug)]
 pub struct OpamFile {
-    pub items: Vec<Box<Item>>,
+    pub items: IndexMap<String, Box<Item>>,
 }
 
 #[derive(Debug)]
@@ -26,11 +27,10 @@ pub enum Value {
 #[derive(Debug)]
 pub enum Item {
     Section {
-        kind: String,
         name: Option<String>,
-        items: Vec<Box<Item>>,
+        items: IndexMap<String, Box<Item>>,
     },
-    Variable(String, Value),
+    Variable(Value),
 }
 
 parser! {
@@ -44,23 +44,24 @@ parser! {
         items[itms] => OpamFile { items: itms }
     }
 
-    items: Vec<Box<Item>> {
-        => vec![],
+    items: IndexMap<String, Box<Item>> {
+        => indexmap![],
         items[mut itms] item[itm] => {
-            itms.push(Box::new(itm));
+            let (id, value) = itm;
+            itms.insert(id, Box::new(value));
             itms
         }
     }
 
-    item: Item {
+    item: (String, Item) {
         IDENT(id) COLON value[v] => {
-            Item::Variable(id, v)
+            (id, Item::Variable(v))
         },
         IDENT(id) LBRACE items[v] RBRACE => {
-            Item::Section{kind: id, name: None, items: v}
+            (id, Item::Section{name: None, items: v})
         },
         IDENT(id) STRING(str) LBRACE items[v] RBRACE => {
-            Item::Section{kind: id, name: Some(str), items: v}
+            (id, Item::Section{name: Some(str), items: v})
         }
     }
 
