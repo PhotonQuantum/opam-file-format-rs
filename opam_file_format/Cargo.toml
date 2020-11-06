@@ -1,0 +1,16 @@
+[package]
+name = "opam_file_format"
+version = "0.1.0"
+authors = ["PhotonQuantum <self@lightquantum.me>"]
+edition = "2018"
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[dependencies]
+logos = "^0.11.4"
+regex = "^1.4.1"
+lazy_static = "^1.4.0"
+plex = "^0.2.5"
+partial_application = "^0.2.1"
+serde_json = {version = "^1.0.59", features = ["preserve_order"]}
+indexmap = "^1.6.0"

@@ -1,0 +1,13 @@
+[package]
+name = "opam-file-format-rs"
+version = "0.1.0"
+authors = ["PhotonQuantum <self@lightquantum.me>"]
+edition = "2018"
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[dependencies]
+opam_file_format = {path = "../opam_file_format"}
+colored = "^2.0.0"
+clap = "^2.33.3"
+slugify = "^0.1.0"
