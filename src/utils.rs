@@ -1,5 +1,6 @@
-use crate::lexer;
 use colored::*;
+
+use crate::lexer;
 
 pub fn pretty_error(filename: &str, source: &str, span: &lexer::Span, message: &str) {
     let split_source: Vec<&str> = source.lines().collect();

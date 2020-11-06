@@ -3,15 +3,17 @@ use std::io::Read;
 use std::process::exit;
 use std::time::SystemTime;
 
-use crate::utils::pretty_error;
 use clap::{App, Arg};
 use colored::*;
+
+use printer::JsonPrinter;
+
+use crate::utils::pretty_error;
 
 mod lexer;
 mod parser;
 mod printer;
 mod utils;
-use printer::{JsonPrinter};
 
 fn main() {
     let matches = App::new("opam-file-format-rs")

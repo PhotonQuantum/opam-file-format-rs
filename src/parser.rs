@@ -1,7 +1,8 @@
+use indexmap::{indexmap, IndexMap};
+use plex::parser;
+
 use crate::lexer;
 use crate::lexer::Token::*;
-use plex::parser;
-use indexmap::{indexmap, IndexMap};
 
 #[derive(Debug)]
 pub struct OpamFile {
