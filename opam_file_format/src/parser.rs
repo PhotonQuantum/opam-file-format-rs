@@ -4,12 +4,12 @@ use plex::parser;
 use crate::lexer;
 use crate::lexer::Token::*;
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct OpamAST {
     pub items: IndexMap<String, Box<Item>>,
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub enum Value {
     Bool(bool),
     Int(i64),
@@ -25,7 +25,7 @@ pub enum Value {
     EnvBinding(Box<Value>, lexer::Envop, Box<Value>),
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub enum Item {
     Section {
         name: Option<String>,

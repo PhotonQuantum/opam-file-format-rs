@@ -46,7 +46,7 @@ enum CommentToken {
     Error,
 }
 
-#[derive(Debug, PartialEq)]
+#[derive(Debug, PartialEq, Copy, Clone)]
 pub enum Relop {
     Eq,
     Neq,
@@ -56,13 +56,13 @@ pub enum Relop {
     Lt,
 }
 
-#[derive(Debug, PartialEq)]
+#[derive(Debug, PartialEq, Copy, Clone)]
 pub enum Pfxop {
     Not,
     Defined,
 }
 
-#[derive(Debug, PartialEq)]
+#[derive(Debug, PartialEq, Copy, Clone)]
 pub enum Envop {
     Eq,
     PlusEq,
@@ -72,7 +72,7 @@ pub enum Envop {
     EqColon,
 }
 
-#[derive(Debug, PartialEq)]
+#[derive(Debug, PartialEq, Copy, Clone)]
 pub enum Logop {
     And,
     Or,
