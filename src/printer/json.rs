@@ -5,10 +5,10 @@ use indexmap::{self, IndexMap};
 use serde_json::{json, Map, Number, Value as JsonValue};
 
 use crate::lexer::{Envop, Logop, Pfxop, Relop};
-use crate::parser::{Item, OpamFile, Value};
+use crate::parser::{Item, OpamAST, Value};
 
 pub struct JsonPrinter<'a> {
-    ast: &'a OpamFile,
+    ast: &'a OpamAST,
 }
 
 impl Display for JsonPrinter<'_> {
@@ -19,7 +19,7 @@ impl Display for JsonPrinter<'_> {
 }
 
 impl JsonPrinter<'_> {
-    pub fn new(ast: &OpamFile) -> JsonPrinter {
+    pub fn new(ast: &OpamAST) -> JsonPrinter {
         JsonPrinter { ast }
     }
     fn relop_literal(op: &Relop) -> &'static str {

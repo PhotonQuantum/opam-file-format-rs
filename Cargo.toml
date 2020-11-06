@@ -1,11 +1,10 @@
 [package]
-name = "opam-file-format-rs"
+name = "opam_file_format"
 version = "0.1.0"
 authors = ["PhotonQuantum <self@lightquantum.me>"]
 edition = "2018"
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
-
 [dependencies]
 logos = "^0.11.4"
 regex = "^1.4.1"

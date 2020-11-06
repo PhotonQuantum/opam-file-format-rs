@@ -6,14 +6,10 @@ use std::time::SystemTime;
 use clap::{App, Arg};
 use colored::*;
 
-use printer::JsonPrinter;
+use opam_file_format::{JsonPrinter, lexer, parser};
 
-use crate::utils::pretty_error;
-
-mod lexer;
-mod parser;
-mod printer;
 mod utils;
+use utils::pretty_error;
 
 fn main() {
     let matches = App::new("opam-file-format-rs")
@@ -101,8 +97,8 @@ fn benchmark(filename: &str, json: bool) {
             elapsed_time as f64 / 1000.0,
             (&files.len() * 1000) as f64 / elapsed_time as f64
         )
-        .green()
-        .bold()
+            .green()
+            .bold()
     );
 }
 

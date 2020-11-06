@@ -5,7 +5,7 @@ use crate::lexer;
 use crate::lexer::Token::*;
 
 #[derive(Debug)]
-pub struct OpamFile {
+pub struct OpamAST {
     pub items: IndexMap<String, Box<Item>>,
 }
 
@@ -41,8 +41,8 @@ parser! {
         lexer::Span{start: a.start, end: b.end}
     }
 
-    main: OpamFile {
-        items[itms] => OpamFile { items: itms }
+    main: OpamAST {
+        items[itms] => OpamAST { items: itms }
     }
 
     items: IndexMap<String, Box<Item>> {
@@ -124,6 +124,6 @@ parser! {
 }
 pub fn parse<I: Iterator<Item = (lexer::Token, lexer::Span)>>(
     i: I,
-) -> Result<OpamFile, (Option<(lexer::Token, lexer::Span)>, &'static str)> {
+) -> Result<OpamAST, (Option<(lexer::Token, lexer::Span)>, &'static str)> {
     parse_(i)
 }
