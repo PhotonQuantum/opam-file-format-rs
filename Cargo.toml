@@ -16,4 +16,5 @@ clap = "^2.33.3"
 tempfile = "^3.1.0"
 slugify = "^0.1.0"
 partial_application = "^0.2.1"
+serde_json = {version = "^1.0.59", features = ["preserve_order"]}
 indexmap = "^1.6.0"
