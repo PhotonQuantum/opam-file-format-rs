@@ -8,7 +8,7 @@ edition = "2018"
 
 [dependencies]
 logos = "^0.11.4"
-regex = "^1.4.1"
+regex = "^1.5.5"
 lazy_static = "^1.4.0"
 plex = "^0.2.5"
 partial_application = "^0.2.1"
